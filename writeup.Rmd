@@ -1,0 +1,12 @@
+---
+title: "Predicting effective use of dumbells"
+output: html_document
+---
+
+
+
+```{r}
+summary(cars)
+```
+
+

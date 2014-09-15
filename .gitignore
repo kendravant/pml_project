@@ -1,0 +1,7 @@
+.Rproj.user
+.Rhistory
+.RData
+pml_project.Rproj
+pml-testing.csv
+pml-training.csv
+pml_write_file.R
