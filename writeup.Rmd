@@ -1,12 +1,72 @@
 ---
-title: "Predicting effective use of dumbells"
+title: "Predicting the effective use of dumbells from motion data"
 output: html_document
 ---
+The dataset for this exercise was collected by attaching monitors to six subjects who performed dumbbell curls - correctly and with five specific faults. There are 160 variables in the dataset including the target class which is the class of execution (e.g. correct, lowering the dumbbell only halfway).
 
 
-
+The first step is to load the data and split it into training and validation sets
 ```{r}
-summary(cars)
+library(caret)
+exercise_data <- read.csv("pml-training.csv")
+set.seed(2345)
+inTrain <- createDataPartition(exercise_data$classe,p=0.6,list=FALSE)
+training <- exercise_data[inTrain,]
+validation <- exercise_data[-inTrain,]
 ```
 
+I then removed candidate features that showed little variation across the dataset
+```{r}
+toDrop = nearZeroVar(training)
+features <- training[,-toDrop]
+```
 
+Because I want to build a model that predicts whether the person is performing the exercise correctly at a point in time rather than over a complete repetion, I next chose to discard the variables that represented a summary statistic over a complete repetition. As these variables only have non-NA values for the "new_window = yes" rows, they are easy to filter out with the fragment of R code shown below
+
+```{r}
+summaryValues <- colSums(is.na(features))>100
+features <- features[!summaryValues]
+```
+
+The final pre-processing step is to drop the columns refering to case numbers, timestamps, users and windows as I am building a model for all users rather than specific users and for a point in time, not a complete repetition.
+```{r}
+features  <- features[,7:59]
+```
+
+This leaves 58 feature variables as input for the model. 
+
+I used the featurePlot function from the caret package and the qplot function from ggplot2 to run some exploratory plots and saw nothing particularly startling. There are a couple of outlier points but nothing that I thought would be signficant given the generous amount of training data avaiable. In the latticed plots below, the colour is the classe label.
+
+```{r}
+qplot(features$classe,features$yaw_arm)
+
+featurePlot(x=features[,c("magnet_dumbbell_x","magnet_dumbbell_y","magnet_dumbbell_z")],
+            y = features$classe,
+            plot="pairs")
+
+featurePlot(x=features[,c("gyros_belt_x","gyros_belt_y","gyros_belt_z")],
+            y = features$classe,
+            plot="pairs")
+##Separates red a bit
+
+```
+(There is evidence in a number of plots of clustering that is not explained by the class variable. This is due to the six different test subjects having different physiques and styles as can be confirmed by colouring the plots according to user instead of class.)
+
+I chose to use the random forests algorithm as provided by the R package randomForests (as this was much, much faster to train than calling the train function from caret with method = "rf").
+
+```{r, echo=FALSE}
+library(randomForest)
+modelFit <- randomForest(classe ~ ., data=features)
+modelFit
+```
+
+As can be seen above, the model fits the training data extremely well. To estimate the out of sample error and check for overfitting, I then took the withheld validation set, predicted the classes using the fitted model and compared the predictions to the actual classes.
+
+```{r}
+pred <- predict(modelFit,validation)
+conMat  <- confusionMatrix(pred,validation$classe)
+OOSaccuracy <- conMat$overall[[1]]
+OOSaccuracy
+```
+
+This model accuracy is so good that I did not experiment with using any other algorithms or investigate further pre-processing such as principal component analysis or centering/scaling. When applied to the supplied test cases, the model predicted all 20 correctly.
