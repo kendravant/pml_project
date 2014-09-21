@@ -1,27 +1,28 @@
 ---
-title: "Predicting the effective use of dumbells from motion data"
+title: "Predicting the effective use of dumbells from sensor data"
 output: html_document
 ---
-The dataset for this exercise was collected by attaching monitors to six subjects who performed dumbbell curls - correctly and with five specific faults. There are 160 variables in the dataset including the target class which is the class of execution (e.g. correct, lowering the dumbbell only halfway).
+The dataset (from the Human Activity Recognition Project http://groupware.les.inf.puc-rio.br/har) for this model fitting exercise was collected by attaching monitors to six subjects who performed dumbbell curls - correctly and with five specific faults. There are 160 variables in the dataset including the target class 'classe' which is the class of execution (correct, lowering the dumbbell only halfway, etc).
 
+My aim was to fit a model that can predict how a user is performing dumbbell curls at any point in time given the sensor data
 
-The first step is to load the data and split it into training and validation sets
+The first step is to load the data and split it into training and validation sets. My analysis uses the caret package to simplying the data setup steps.
 ```{r}
 library(caret)
-exercise_data <- read.csv("pml-training.csv")
+exercise_data <- read.csv("../pml-training.csv")
 set.seed(2345)
 inTrain <- createDataPartition(exercise_data$classe,p=0.6,list=FALSE)
 training <- exercise_data[inTrain,]
 validation <- exercise_data[-inTrain,]
 ```
 
-I then removed candidate features that showed little variation across the dataset
+I then removed candidate features that showed little variation across the dataset using the nearZeroVar function from the caret package.
 ```{r}
 toDrop = nearZeroVar(training)
 features <- training[,-toDrop]
 ```
 
-Because I want to build a model that predicts whether the person is performing the exercise correctly at a point in time rather than over a complete repetion, I next chose to discard the variables that represented a summary statistic over a complete repetition. As these variables only have non-NA values for the "new_window = yes" rows, they are easy to filter out with the fragment of R code shown below
+Because I want to build a model that predicts whether the person is performing the exercise correctly at a point in time rather than over a complete repetion, I next chose to discard the variables that represented a summary statistic over a complete repetition. As these variables only have non-NA values for the "new_window = yes" rows, they are easy to filter out with the fragment of R code shown below. This fragment drops all columns with more than 100 NA values (I chose 100 for safety although actually I could have used > 0 with this dataset as all cases are complete once summary variables are removed.)
 
 ```{r}
 summaryValues <- colSums(is.na(features))>100
@@ -50,11 +51,11 @@ featurePlot(x=features[,c("gyros_belt_x","gyros_belt_y","gyros_belt_z")],
 ##Separates red a bit
 
 ```
-(There is evidence in a number of plots of clustering that is not explained by the class variable. This is due to the six different test subjects having different physiques and styles as can be confirmed by colouring the plots according to user instead of class.)
+(There is evidence in a number of plots of clustering that is not explained by the class variable. This is due to the six different test subjects having different motion ranges and styles as can be confirmed by colouring the plots according to user instead of class.)
 
 I chose to use the random forests algorithm as provided by the R package randomForests (as this was much, much faster to train than calling the train function from caret with method = "rf").
 
-```{r, echo=FALSE}
+```{r}
 library(randomForest)
 modelFit <- randomForest(classe ~ ., data=features)
 modelFit
@@ -69,4 +70,7 @@ OOSaccuracy <- conMat$overall[[1]]
 OOSaccuracy
 ```
 
-This model accuracy is so good that I did not experiment with using any other algorithms or investigate further pre-processing such as principal component analysis or centering/scaling. When applied to the supplied test cases, the model predicted all 20 correctly.
+This model accuracy is so good that I did not experiment with using any other algorithms or investigate further pre-processing such as principal component analysis or centering/scaling. 
+
+It is also in agreement with the out-of-bag estimates of error rate given by the random forest algorithm (0.6%, see above)  When applied to the supplied test cases, the model predicted all 20 correctly.
+
