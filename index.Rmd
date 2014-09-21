@@ -2,9 +2,14 @@
 title: "Predicting the effective use of dumbells from sensor data"
 output: html_document
 ---
+
+## Introduction
+
 The dataset (from the Human Activity Recognition Project http://groupware.les.inf.puc-rio.br/har) for this model fitting exercise was collected by attaching monitors to six subjects who performed dumbbell curls - correctly and with five specific faults. There are 160 variables in the dataset including the target class 'classe' which is the class of execution (correct, lowering the dumbbell only halfway, etc).
 
 My aim was to fit a model that can predict how a user is performing dumbbell curls at any point in time given the sensor data
+
+## Preprocessing
 
 The first step is to load the data and split it into training and validation sets. My analysis uses the caret package to simplying the data setup steps.
 ```{r}
@@ -36,6 +41,8 @@ features  <- features[,7:59]
 
 This leaves 58 feature variables as input for the model. 
 
+## Exploratory Analysis
+
 I used the featurePlot function from the caret package and the qplot function from ggplot2 to run some exploratory plots and saw nothing particularly startling. There are a couple of outlier points but nothing that I thought would be signficant given the generous amount of training data avaiable. In the latticed plots below, the colour is the classe label.
 
 ```{r}
@@ -53,6 +60,8 @@ featurePlot(x=features[,c("gyros_belt_x","gyros_belt_y","gyros_belt_z")],
 ```
 (There is evidence in a number of plots of clustering that is not explained by the class variable. This is due to the six different test subjects having different motion ranges and styles as can be confirmed by colouring the plots according to user instead of class.)
 
+## Model Building
+
 I chose to use the random forests algorithm as provided by the R package randomForests (as this was much, much faster to train than calling the train function from caret with method = "rf").
 
 ```{r}
@@ -65,6 +74,7 @@ As can be seen above, the model fits the training data extremely well. To estima
 
 ```{r}
 pred <- predict(modelFit,validation)
+confusionMatrix(pred,validation$classe)
 conMat  <- confusionMatrix(pred,validation$classe)
 OOSaccuracy <- conMat$overall[[1]]
 OOSaccuracy
